@@ -1,0 +1,882 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="description" content="Résultats de l'enquête Campus Mobilité : comment les étudiants viennent sur le campus de Schœlcher et les solutions proposées.">
+<style>*,*::before,*::after{box-sizing:border-box}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<title>Campus Mobilité</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Big+Shoulders+Display:wght@500;700;800&family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&display=swap">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/d3/7.8.5/d3.min.js"></script>
+<style>
+/* Layout: a single reading column punctuated by a bus-line motif; each section is a "stop" on the route from survey to solutions */
+:root {
+  --ground: #f2f5f4; --surface: #ffffff; --ink: #13242b; --ink-soft: #55676e; --rule: #d6dfdd;
+  --line: #11708a; --line-2: #e0a32e; --line-3: #6b8f3a; --line-4: #8a5aa8; --alert: #cf4636; --muted-mark: #b9c4c2;
+  --font-display: 'Big Shoulders Display', 'Arial Narrow', Impact, sans-serif;
+  --font-body: 'Atkinson Hyperlegible', 'Segoe UI', system-ui, sans-serif;
+  /* aliases used by the chart code */
+  --color-bg: var(--ground); --color-panel: var(--surface); --color-fg: var(--ink); --color-fg-muted: var(--ink-soft);
+  --color-border-line: var(--rule); --color-ok: var(--line-3); --color-warn: var(--line-2); --color-bad: var(--alert);
+  --cds-chart-muted: var(--muted-mark); --cds-chart-grid: var(--rule); --cds-chart-status-critical: var(--alert);
+  --cds-surface-popover: var(--surface); --cds-border: var(--rule); --cds-text-secondary: var(--ink-soft);
+  --cds-shadow-popover: 0 6px 20px rgba(19, 36, 43, .14);
+  --cds-radius: 14px; --cds-pad-xs: 6px; --cds-pad-sm: 10px; --cds-pad-md: 16px; --cds-pad-lg: 22px;
+  --cds-gap-xs: 6px; --cds-gap-sm: 10px; --cds-gap-md: 18px; --cds-gap-lg: 32px; --cds-gap-xl: 64px;
+  --cds-font-size-caption: .82rem; --cds-font-size-body: .95rem; --cds-font-size-heading: 1.08rem; --cds-font-size-title: 1.6rem;
+  --cds-font-weight-medium: 700; --cds-dur-slow: .6s; --cds-ease-out: cubic-bezier(.2, .8, .2, 1);
+  --font-anthropic-sans: var(--font-body); --font-anthropic-serif: var(--font-display);
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+  --ground: #0f1a1e; --surface: #16252b; --ink: #e6efee; --ink-soft: #9fb2b5; --rule: #2a3d43;
+  --line: #3fb0cc; --line-2: #f0b84a; --line-3: #8fbf55; --line-4: #b88ad6; --alert: #f06a58; --muted-mark: #4c6268;
+  --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .45); color-scheme: dark } }
+:root[data-theme="dark"] {
+  --ground: #0f1a1e; --surface: #16252b; --ink: #e6efee; --ink-soft: #9fb2b5; --rule: #2a3d43;
+  --line: #3fb0cc; --line-2: #f0b84a; --line-3: #8fbf55; --line-4: #b88ad6; --alert: #f06a58; --muted-mark: #4c6268;
+  --cds-shadow-popover: 0 6px 20px rgba(0, 0, 0, .45); color-scheme: dark }
+body { background: var(--ground); color: var(--ink); font-family: var(--font-body); font-size: 16px; line-height: 1.55; }
+.wrap { max-width: 1120px; margin-inline: auto; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+.cm { max-width: none !important; }
+/* hero */
+.hero { padding-block: 56px 28px; display: grid; gap: 22px; }
+.eyebrow { font-size: .78rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: clamp(3.2rem, 11vw, 7.5rem); line-height: .86; letter-spacing: -.01em; text-transform: uppercase; margin: 0; color: var(--ink); }
+.brand span { color: var(--line); }
+.hero h2 { font-family: var(--font-body); font-weight: 400; font-size: clamp(1.15rem, 2.4vw, 1.45rem); line-height: 1.4; max-width: 46ch; margin: 0; text-wrap: balance; }
+.hero h2 b { font-weight: 700; }
+.pb { max-width: 64ch; margin: 0; padding: 14px 18px; border: 2px solid var(--ink); border-radius: 12px; font-size: 1rem; background: var(--surface); }
+.pb small { display: block; font-size: .72rem; letter-spacing: .14em; text-transform: uppercase; color: var(--ink-soft); margin-bottom: 4px; }
+/* route motif: the four project stages from the brief */
+.route { position: relative; display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 10px; padding-top: 26px; }
+.route::before { content: ""; position: absolute; left: 6px; right: 6px; top: 8px; height: 6px; border-radius: 3px; background: var(--line); }
+.stop { position: relative; font-size: .85rem; line-height: 1.25; color: var(--ink-soft); padding-right: 6px; }
+.stop::before { content: ""; position: absolute; left: 0; top: -26px; width: 16px; height: 16px; border-radius: 50%; background: var(--surface); border: 4px solid var(--line); box-sizing: border-box; }
+.stop b { display: block; color: var(--ink); font-family: var(--font-display); font-size: 1.15rem; letter-spacing: .02em; text-transform: uppercase; }
+.stop.here::before { background: var(--line); }
+@media (max-width: 560px) { .route { grid-template-columns: repeat(2, 1fr); row-gap: 34px; } .route::before { display: none; } }
+/* override old header/sections look */
+.cm-lead { font-size: 1.05rem !important; max-width: 62ch; color: var(--ink-soft); }
+.cm-kpi-n { font-family: var(--font-display) !important; font-weight: 800 !important; font-size: clamp(2.8rem, 5vw, 3.6rem) !important; letter-spacing: -.01em; }
+.cm-kpi { border-top: 6px solid var(--line) !important; }
+.cm-kpi:has(.bad) { border-top-color: var(--alert) !important; }
+.cm-bar { top: env(safe-area-inset-top, 0px) !important; background: var(--ground) !important; }
+body::before { content: ""; position: fixed; inset: 0 0 auto; height: env(safe-area-inset-top, 0px); z-index: 10; background: var(--ground); }
+.cm-sec h2 { font-family: var(--font-display) !important; font-weight: 800 !important; text-transform: uppercase; letter-spacing: .01em; font-size: clamp(2rem, 4.5vw, 2.8rem) !important; line-height: .95; }
+.cm-sec-n { font-family: var(--font-display) !important; font-weight: 700; color: var(--line) !important; font-size: 1.3rem !important; letter-spacing: .04em; }
+.cm-card h3 { font-size: 1.08rem; }
+/* solutions */
+.sols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 19rem), 1fr)); gap: 18px; }
+.sol { background: var(--surface); border: 1px solid var(--rule); border-radius: 14px; padding: 20px 22px; display: grid; gap: 8px; align-content: start; }
+.sol-n { font-family: var(--font-display); font-weight: 800; font-size: 2.4rem; line-height: 1; color: var(--line); }
+.sol.now .sol-n { color: var(--line-3); }
+.sol h3 { margin: 0; font-size: 1.12rem; }
+.sol p { margin: 0; color: var(--ink-soft); font-size: .93rem; }
+.tag { justify-self: start; font-size: .72rem; letter-spacing: .1em; text-transform: uppercase; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--rule); color: var(--ink-soft); }
+.sol.now .tag { border-color: var(--line-3); color: var(--line-3); }
+.sol .why { font-size: .85rem; color: var(--ink); border-top: 1px dashed var(--rule); padding-top: 8px; }
+/* method */
+.method { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: 18px; }
+.method div { min-width: 0; }
+.method b { display: block; font-family: var(--font-display); font-size: 1.35rem; text-transform: uppercase; letter-spacing: .02em; }
+.method p { margin: 4px 0 0; color: var(--ink-soft); font-size: .93rem; }
+.foot { margin-block: 56px 32px; padding-top: 18px; border-top: 6px solid var(--line); display: flex; flex-wrap: wrap; justify-content: space-between; gap: 12px; font-size: .85rem; color: var(--ink-soft); }
+.foot b { font-family: var(--font-display); font-size: 1.4rem; color: var(--ink); text-transform: uppercase; letter-spacing: .02em; }
+:focus-visible { outline: 3px solid var(--line); outline-offset: 2px; }
+</style>
+<style>
+
+#dash-root { --dash-gutter: clamp(16px, 4vw, 40px); }
+.cm { max-width: 1180px; margin-inline: auto; font-family: var(--font-anthropic-sans); color: var(--color-fg); font-variant-numeric: tabular-nums; }
+.cm-head { padding-block: var(--cds-pad-lg) var(--cds-pad-md); }
+.cm-kicker { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); letter-spacing: .08em; text-transform: uppercase; }
+.cm-title { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: clamp(2rem, 5vw, 3.2rem); line-height: 1.05; margin: var(--cds-gap-xs) 0 var(--cds-gap-sm); }
+.cm-lead { font-size: var(--cds-font-size-heading); color: var(--color-fg-muted); max-width: 60ch; line-height: 1.45; margin: 0; }
+.cm-lead .cm-strong { color: var(--color-fg); }
+.cm-sim { display: flex; gap: var(--cds-gap-sm); align-items: flex-start; margin-top: var(--cds-gap-md); padding: var(--cds-pad-sm) var(--cds-pad-md); border: 1px dashed var(--color-warn); border-radius: var(--cds-radius); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cm-flow { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 20rem), 1fr)); gap: var(--cds-gap-lg); align-items: start; }
+.cm-flow svg { display: block; overflow: visible; }
+.cm-fl { display: flex; flex-direction: column; gap: 8px; }
+.cm-fl-h { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 2px; }
+.cm-fl-r { display: grid; grid-template-columns: 1.6rem minmax(6rem, 1fr) 2.4rem minmax(5rem, 1.4fr); gap: 8px; align-items: center; font-size: var(--cds-font-size-caption); padding: 3px 6px; border-radius: 6px; cursor: default; }
+.cm-fl-r:hover, .cm-fl-r.on { background: color-mix(in srgb, var(--color-fg) 7%, transparent); }
+.cm-fl-i { color: var(--color-fg-muted); text-align: right; }
+.cm-fl-n { font-weight: 600; text-align: right; }
+.cm-fl-b { display: flex; height: 10px; border-radius: 3px; overflow: hidden; gap: 1px; }
+.cm-pb { margin-top: var(--cds-gap-md); max-width: 75ch; padding: var(--cds-pad-md) var(--cds-pad-lg); border-left: 3px solid var(--color-fg); background: var(--color-panel); border-radius: 0 var(--cds-radius) var(--cds-radius) 0; font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-heading); line-height: 1.45; font-style: italic; }
+.cm-pb-k { display: block; font-family: var(--font-anthropic-sans); font-style: normal; font-size: var(--cds-font-size-caption); letter-spacing: .08em; text-transform: uppercase; color: var(--color-fg-muted); margin-bottom: 4px; }
+.cm-step { font-family: var(--font-anthropic-sans); font-size: var(--cds-font-size-caption); letter-spacing: .06em; text-transform: uppercase; vertical-align: middle; }
+.cm-sim { border-color: var(--color-ok); }
+.cm-sim > span:first-child { color: var(--color-ok); }
+.cm-sim.warn { border-color: var(--color-warn); }
+.cm-sim.warn > span:first-child, .cm-sim.warn .cm-strong { color: var(--color-warn); }
+.cm-src { display: inline-flex; flex-wrap: wrap; gap: 6px; margin-top: var(--cds-gap-md); padding: 4px; border-radius: 12px; background: var(--color-panel); border: 1px solid var(--color-border-line); }
+.cm-src button { all: unset; cursor: pointer; display: inline-flex; align-items: center; gap: 8px; padding: 8px 14px; border-radius: 9px; font-size: var(--cds-font-size-body); color: var(--color-fg-muted); }
+.cm-src button b { font-weight: 600; color: var(--color-fg); }
+.cm-src button[aria-pressed="true"] { background: var(--color-bg); color: var(--color-fg); box-shadow: 0 1px 3px color-mix(in srgb, var(--color-fg) 15%, transparent); }
+.cm-src button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cm-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-warn); }
+.cm-dot.live { background: var(--color-ok); }
+@media (prefers-reduced-motion: no-preference) { .cm-dot.live { animation: cmPulse 2s ease-in-out infinite; } @keyframes cmPulse { 50% { opacity: .35; } } }
+.cm-quote { font-size: var(--cds-font-size-body); line-height: 1.45; font-style: italic; }
+.cm-quote-m { margin-top: 8px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cm-strong { font-weight: 600; }
+.cm-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 12.5rem), 1fr)); gap: var(--cds-gap-md); margin-block: var(--cds-gap-lg); }
+.cm-kpi { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); display: flex; flex-direction: column; gap: var(--cds-gap-xs); }
+.cm-kpi-n { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: clamp(2.2rem, 4vw, 2.8rem); line-height: 1; }
+.cm-kpi-n.bad { color: var(--color-bad); }
+.cm-kpi-l { font-size: var(--cds-font-size-body); line-height: 1.35; }
+.cm-kpi-s { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cm-bar { position: sticky; top: 0; z-index: 3; display: flex; flex-wrap: wrap; align-items: center; gap: var(--cds-gap-sm); padding: var(--cds-pad-sm) 0; background: var(--color-bg); border-bottom: 1px solid var(--color-border-line); margin-bottom: var(--cds-gap-lg); }
+.cm-bar-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cm-seg { display: inline-flex; border: 1px solid var(--color-border-line); border-radius: 999px; padding: 3px; background: var(--color-panel); }
+.cm-seg button { all: unset; cursor: pointer; padding: 6px 14px; border-radius: 999px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); }
+.cm-seg button[aria-pressed="true"] { background: var(--color-fg); color: var(--color-bg); }
+.cm-seg button:focus-visible { outline: 2px solid var(--color-fg); outline-offset: 2px; }
+.cm-bar-n { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-left: auto; }
+.cm-sec { margin-block: var(--cds-gap-xl) var(--cds-gap-lg); }
+.cm-sec-n { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); color: var(--color-fg-muted); }
+.cm-sec h2 { font-family: var(--font-anthropic-serif); font-weight: 400; font-size: clamp(1.5rem, 3vw, 2rem); margin: 0 0 var(--cds-gap-xs); }
+.cm-sec p.cm-sub { margin: 0 0 var(--cds-gap-md); color: var(--color-fg-muted); max-width: 70ch; }
+.cm-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 22rem), 1fr)); gap: var(--cds-gap-md); }
+.cm-card { background: var(--color-panel); border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-lg); position: relative; min-width: 0; }
+.cm-card.wide { grid-column: 1 / -1; }
+.cm-card h3 { font-size: var(--cds-font-size-heading); font-weight: var(--cds-font-weight-medium); margin: 0 0 4px; }
+.cm-q { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin: 0 0 var(--cds-gap-md); }
+.cm-chart { min-height: 220px; position: relative; }
+.cm-hb { display: grid; grid-template-columns: minmax(7rem, 38%) 1fr auto; align-items: center; gap: 6px 10px; }
+.cm-hb-l { font-size: var(--cds-font-size-caption); line-height: 1.25; }
+.cm-hb-t { height: 18px; background: color-mix(in srgb, var(--color-fg) 6%, transparent); border-radius: 4px; overflow: hidden; }
+.cm-hb-f { height: 100%; border-radius: 4px; transition: width var(--cds-dur-slow) var(--cds-ease-out), opacity .15s; }
+.cm-hb-v { font-size: var(--cds-font-size-caption); min-width: 4.5rem; text-align: right; }
+.cm-hb-v b { font-weight: 600; }
+.cm-hb-row { display: contents; }
+.cm-hb-row:hover .cm-hb-f { filter: brightness(1.12); }
+.cm-hb-row.dim .cm-hb-f { opacity: .35; }
+.cm-tip { position: absolute; pointer-events: none; z-index: 5; background: var(--cds-surface-popover); border: 1px solid var(--cds-border); border-radius: var(--cds-radius); box-shadow: var(--cds-shadow-popover); padding: var(--cds-pad-xs) var(--cds-pad-sm); font-size: var(--cds-font-size-caption); opacity: 0; transition: opacity .12s; max-width: 240px; }
+.cm-tip .h { color: var(--cds-text-secondary); margin-bottom: 2px; }
+.cm-tip .sw { display: inline-block; width: 8px; height: 8px; border-radius: 2px; margin-right: 6px; }
+.cm-donut { display: flex; flex-wrap: wrap; gap: var(--cds-gap-md); align-items: center; }
+.cm-donut svg { flex: 0 0 auto; }
+.cm-leg { display: flex; flex-direction: column; gap: 4px; flex: 1 1 12rem; min-width: 0; }
+.cm-leg button { all: unset; cursor: pointer; display: grid; grid-template-columns: 10px 1fr auto; gap: 8px; align-items: center; font-size: var(--cds-font-size-caption); padding: 3px 6px; border-radius: 6px; }
+.cm-leg button:hover, .cm-leg button.on { background: color-mix(in srgb, var(--color-fg) 7%, transparent); }
+.cm-leg i { width: 10px; height: 10px; border-radius: 3px; }
+.cm-stack-row { margin-bottom: var(--cds-gap-md); }
+.cm-stack-h { display: flex; justify-content: space-between; font-size: var(--cds-font-size-body); margin-bottom: 6px; }
+.cm-stack-h span:last-child { color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cm-stack { display: flex; height: 34px; border-radius: 6px; overflow: hidden; gap: 2px; }
+.cm-stack div { display: flex; align-items: center; justify-content: center; font-size: var(--cds-font-size-caption); color: #fff; font-weight: 600; min-width: 0; overflow: hidden; transition: flex-grow var(--cds-dur-slow) var(--cds-ease-out), opacity .15s; cursor: default; }
+.cm-stack div:hover { filter: brightness(1.1); }
+.cm-keys { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); margin-top: var(--cds-gap-sm); }
+.cm-keys i { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+.cm-callout { margin-top: var(--cds-gap-md); padding: var(--cds-pad-sm) var(--cds-pad-md); border-left: 3px solid var(--color-bad); background: color-mix(in srgb, var(--color-bad) 7%, transparent); border-radius: 0 var(--cds-radius) var(--cds-radius) 0; font-size: var(--cds-font-size-body); }
+.cm-heat { display: grid; gap: 3px; font-size: var(--cds-font-size-caption); }
+.cm-heat .c { aspect-ratio: auto; min-height: 34px; border-radius: 5px; display: flex; align-items: center; justify-content: center; font-weight: 600; cursor: default; }
+.cm-heat .hl { color: var(--color-fg-muted); display: flex; align-items: center; justify-content: center; text-align: center; line-height: 1.15; padding: 2px; }
+.cm-heat .rl { color: var(--color-fg); display: flex; align-items: center; line-height: 1.15; }
+.cm-cols { display: flex; align-items: flex-end; gap: 8px; height: 200px; padding-top: 22px; }
+.cm-col { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; height: 100%; gap: 6px; min-width: 0; }
+.cm-col-b { width: 100%; max-width: 64px; border-radius: 6px 6px 3px 3px; position: relative; transition: height var(--cds-dur-slow) var(--cds-ease-out), opacity .15s; }
+.cm-col-b span { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); font-size: var(--cds-font-size-caption); font-weight: 600; white-space: nowrap; color: var(--color-fg); }
+.cm-col-l { font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); text-align: center; line-height: 1.15; min-height: 2.3em; }
+.cm-col:hover .cm-col-b { filter: brightness(1.12); }
+.cm-ideas { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 15rem), 1fr)); gap: var(--cds-gap-md); }
+.cm-idea { border: 1px solid var(--color-border-line); border-radius: var(--cds-radius); padding: var(--cds-pad-md); background: var(--color-bg); }
+.cm-idea-n { font-family: var(--font-anthropic-serif); font-size: 2rem; line-height: 1; }
+.cm-idea-t { margin-top: 6px; font-size: var(--cds-font-size-body); line-height: 1.35; }
+.cm-idea-p { margin-top: 10px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--color-fg) 6%, transparent); overflow: hidden; }
+.cm-idea-p div { height: 100%; border-radius: 3px; }
+.cm-reco { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 16rem), 1fr)); gap: var(--cds-gap-md); }
+.cm-reco > div { border-radius: var(--cds-radius); padding: var(--cds-pad-lg); background: var(--color-panel); border: 1px solid var(--color-border-line); }
+.cm-reco .k { font-family: var(--font-anthropic-serif); font-size: var(--cds-font-size-title); }
+.cm-reco p { margin: 6px 0 0; color: var(--color-fg-muted); line-height: 1.45; }
+.cm-foot { margin-block: var(--cds-gap-xl); font-size: var(--cds-font-size-caption); color: var(--color-fg-muted); line-height: 1.5; border-top: 1px solid var(--color-border-line); padding-top: var(--cds-pad-md); }
+[data-dash-source-state=empty] { color: transparent; }
+[data-dash-source-state=refreshing] { opacity: .5; transition: opacity var(--cds-dur-slow); }
+.cm-fail { display: flex; align-items: center; justify-content: center; gap: 8px; min-height: 200px; color: var(--color-fg-muted); font-size: var(--cds-font-size-caption); }
+.cm-fail::before { content: ""; width: .375rem; height: .375rem; border-radius: 50%; background: var(--color-bad); }
+@media (prefers-reduced-motion: no-preference) {
+  .cm-in .cm-card, .cm-in .cm-kpi { animation: cmUp var(--cds-dur-slow) var(--cds-ease-out) both; }
+  @keyframes cmUp { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+<div class="cm" id="cm">
+  <header class="hero" id="intro">
+    <div class="eyebrow">Université des Antilles · IUT de la Martinique · BUT MLT · Enquête octobre 2026</div>
+    <h1 class="brand">Campus<br><span>Mobilité</span></h1>
+    <h2>Comment les étudiants viennent sur le campus de Schœlcher, ce que cela coûte à leurs études, et ce qu’il faudrait changer.</h2>
+    <p class="pb"><small>Problématique</small>Comment faciliter les déplacements quotidiens des étudiants de l’université afin que les contraintes de mobilité ne soient plus un frein à leur réussite scolaire&nbsp;?</p>
+    <div class="route" aria-label="Les quatre étapes du projet">
+      <div class="stop here"><b>Analyser</b>la situation</div>
+      <div class="stop here"><b>Documenter</b>les besoins</div>
+      <div class="stop here"><b>Imaginer</b>des solutions</div>
+      <div class="stop"><b>Convaincre</b>les décideurs</div>
+    </div>
+    <p class="cm-lead" id="cm-lead"></p>
+  </header>
+  <section class="cm-kpis" id="kpis">
+    <div class="cm-kpi"><div class="cm-kpi-n" data-source="kpis" data-field="total">—</div><div class="cm-kpi-l">réponses analysées</div><div class="cm-kpi-s">Questionnaire Campus Mobilité · 10 questions</div></div>
+    <div class="cm-kpi"><div class="cm-kpi-n"><span data-source="kpis" data-field="pct_tc">—</span>&nbsp;%</div><div class="cm-kpi-l">viennent en transports en commun</div><div class="cm-kpi-s">Bus, TCSP ou taxi collectif (mode principal)</div></div>
+    <div class="cm-kpi"><div class="cm-kpi-n"><span data-source="kpis" data-field="pct_long">—</span>&nbsp;%</div><div class="cm-kpi-l">ont un trajet de plus de 45&nbsp;min</div><div class="cm-kpi-s">Aller simple, attente comprise</div></div>
+    <div class="cm-kpi"><div class="cm-kpi-n bad"><span data-source="kpis" data-field="pct_retard_tc">—</span>&nbsp;%</div><div class="cm-kpi-l">des usagers TC arrivent en retard chaque semaine</div><div class="cm-kpi-s">contre <span data-source="kpis" data-field="pct_retard_autres">—</span>&nbsp;% pour les autres modes</div></div>
+    <div class="cm-kpi"><div class="cm-kpi-n bad"><span data-source="kpis" data-field="pct_absence">—</span>&nbsp;%</div><div class="cm-kpi-l">ont déjà manqué un cours à cause du transport</div><div class="cm-kpi-s"><span data-source="kpis" data-field="n_absence">—</span> étudiants depuis la rentrée</div></div>
+  </section>
+
+  <div class="cm-bar" role="toolbar" aria-label="Filtrer les graphiques">
+    <span class="cm-bar-l">Afficher&nbsp;:</span>
+    <div class="cm-seg" id="cm-seg">
+      <button type="button" data-g="all" aria-pressed="true">Tous les répondants</button>
+      <button type="button" data-g="tc" aria-pressed="false">Usagers TC</button>
+      <button type="button" data-g="autres" aria-pressed="false">Autres modes</button>
+    </div>
+    <span class="cm-bar-n" id="cm-bar-n"></span>
+  </div>
+
+  <section class="cm-sec" id="profil">
+    <div class="cm-sec-n">01 <span class="cm-step">· Analyser la situation</span></div>
+    <h2>Qui sont les répondants&nbsp;?</h2>
+    <p class="cm-sub">D'où viennent-ils et comment se déplacent-ils&nbsp;? Survolez les barres pour le détail, cliquez sur la légende pour isoler un mode.</p>
+    <div class="cm-grid">
+      <div class="cm-card wide" id="flux"><h3>Flux domicile → campus</h3><p class="cm-q">Q1 × Q2 · chaque cercle est une commune de résidence, sa taille et l’épaisseur du trait suivent le nombre d’étudiants, ses couleurs leur mode de transport. Survolez une commune pour le détail.</p>
+        <div class="cm-flow"><div class="cm-chart" id="ch-flux" data-source="reponses" style="min-height:360px"></div><div id="ch-flux-list" data-source="reponses"></div></div>
+        <div class="cm-keys" id="ch-flux-keys"></div></div>
+      <div class="cm-card"><h3>Commune de résidence</h3><p class="cm-q">Q1 · Dans quelle commune habitez-vous pendant l'année universitaire&nbsp;?</p><div class="cm-chart" id="ch-commune" data-source="reponses"></div></div>
+      <div class="cm-card"><h3>Mode de transport principal</h3><p class="cm-q">Q2 · Quel moyen de transport utilisez-vous le plus souvent&nbsp;?</p><div class="cm-chart" id="ch-mode" data-source="reponses"></div></div>
+    </div>
+  </section>
+
+  <section class="cm-sec" id="trajet">
+    <div class="cm-sec-n">02 <span class="cm-step">· Analyser la situation</span></div>
+    <h2>Le trajet au quotidien</h2>
+    <p class="cm-sub">Durée, fréquence d'usage des transports en commun et temps passé à l'arrêt.</p>
+    <div class="cm-grid">
+      <div class="cm-card"><h3>Durée du trajet</h3><p class="cm-q">Q3 · Aller simple, attente comprise</p><div class="cm-chart" id="ch-duree" data-source="reponses"></div></div>
+      <div class="cm-card"><h3>Fréquence d'usage des TC</h3><p class="cm-q">Q4 · À quelle fréquence utilisez-vous les transports en commun&nbsp;?</p><div class="cm-chart" id="ch-freq" data-source="reponses"></div></div>
+      <div class="cm-card"><h3>Attente à l'arrêt</h3><p class="cm-q">Q5 · Parmi les répondants qui prennent les TC</p><div class="cm-chart" id="ch-attente" data-source="reponses"></div></div>
+      <div class="cm-card"><h3>Durée selon le mode</h3><p class="cm-q">Q2 × Q3 · nombre de répondants par case</p><div class="cm-chart" id="ch-heat" data-source="reponses"></div></div>
+    </div>
+  </section>
+
+  <section class="cm-sec" id="impact">
+    <div class="cm-sec-n">03 <span class="cm-step">· Documenter les besoins</span></div>
+    <h2>L'impact sur les études</h2>
+    <p class="cm-sub">C'est le cœur de l'enquête&nbsp;: les retards et les absences liés au transport, comparés entre usagers des transports en commun et autres modes.</p>
+    <div class="cm-grid">
+      <div class="cm-card wide"><h3>Fréquence des retards</h3><p class="cm-q">Q6 · À quelle fréquence arrivez-vous en retard à cause de vos déplacements&nbsp;? (part de chaque groupe)</p><div class="cm-chart" id="ch-retard" data-source="reponses" style="min-height:160px"></div>
+        <div class="cm-callout" id="cm-call-retard"><span class="dash-skeleton">—</span></div></div>
+      <div class="cm-card"><h3>Cours, examen ou activité manqué</h3><p class="cm-q">Q7 · Depuis la rentrée, à cause d'un problème de transport</p><div class="cm-chart" id="ch-absence" data-source="reponses" style="min-height:160px"></div></div>
+      <div class="cm-card"><h3>Attente et retards</h3><p class="cm-q">Q5 × Q6 · part des usagers en retard au moins une fois par semaine, selon l'attente</p><div class="cm-chart" id="ch-att-ret" data-source="reponses" style="min-height:160px"></div></div>
+    </div>
+  </section>
+
+  <section class="cm-sec" id="besoins">
+    <div class="cm-sec-n">04 <span class="cm-step">· Documenter les besoins</span></div>
+    <h2>Difficultés et pistes d'amélioration</h2>
+    <p class="cm-sub">Une seule réponse possible par question. Le filtre en haut de page montre à quel point les attentes diffèrent selon le mode.</p>
+    <div class="cm-grid">
+      <div class="cm-card"><h3>Principale difficulté</h3><p class="cm-q">Q8 · Quelle est la principale difficulté rencontrée&nbsp;?</p><div class="cm-chart" id="ch-diff" data-source="reponses"></div></div>
+      <div class="cm-card"><h3>Mesure la plus utile</h3><p class="cm-q">Q9 · Quelle mesure améliorerait le plus vos déplacements&nbsp;?</p><div class="cm-chart" id="ch-mesure" data-source="reponses"></div></div>
+      <div class="cm-card wide"><h3>Idées et remarques libres</h3><p class="cm-q">Q10 · Réponses facultatives, regroupées par thème</p><div id="ch-idees" class="cm-ideas" data-source="reponses"></div></div>
+    </div>
+  </section>
+
+  <section class="cm-sec" id="solutions">
+    <div class="cm-sec-n">05 <span class="cm-step">· Imaginer des solutions</span></div>
+    <h2>Cinq solutions</h2>
+    <p class="cm-sub">Chacune répond à un besoin mesuré dans l’enquête. En vert, ce qui peut démarrer tout de suite, sans budget.</p>
+    <div class="sols">
+      <div class="sol now"><div class="sol-n">1</div><span class="tag">À lancer maintenant</span><h3>Emplois du temps adaptés</h3><p>Éviter les cours très tôt ou très tard quand les bus sont rares, et mettre les supports en ligne.</p><div class="why">Horaires inadaptés : première difficulté des usagers TC, dont 52 % sont en retard chaque semaine.</div></div>
+      <div class="sol now"><div class="sol-n">2</div><span class="tag">À lancer maintenant</span><h3>Covoiturage entre étudiants</h3><p>Un espace sur le site Campus Mobilité pour publier et trouver des trajets vers le campus.</p><div class="why">Le coût est la première difficulté des autres étudiants ; 13 remarques libres demandent du covoiturage.</div></div>
+      <div class="sol"><div class="sol-n">3</div><span class="tag">Projet phare</span><h3>Navette universitaire</h3><p>Aux heures d’arrivée et après les derniers cours, depuis Fort-de-France et Le Lamentin.</p><div class="why">Mesure la plus demandée (17 étudiants), par les usagers TC comme par les autres.</div></div>
+      <div class="sol"><div class="sol-n">4</div><span class="tag">Complément</span><h3>Information en temps réel</h3><p>Les prochains passages affichés sur le campus et en ligne.</p><div class="why">12 remarques libres demandent une meilleure information sur les horaires.</div></div>
+      <div class="sol"><div class="sol-n">5</div><span class="tag">À plus long terme</span><h3>Tarif étudiant réduit</h3><p>Un abonnement à prix réduit sur le réseau, à négocier avec Martinique Transport.</p><div class="why">Coût cité en premier par 27 % des répondants, mais un réseau en déficit.</div></div>
+    </div>
+  </section>
+
+  <section class="cm-sec" id="methode">
+    <div class="cm-sec-n">06 <span class="cm-step">· La méthode</span></div>
+    <h2>Comment l’enquête a été menée</h2>
+    <div class="method">
+      <div><b>10 questions</b><p>Profil, trajet, impact sur les études, attentes. Choix unique, réponses en tranches, 3 minutes sur téléphone.</p></div>
+      <div><b>Un site dédié</b><p>Le site Campus Mobilité enregistre chaque réponse dans Google Sheets via Google Apps Script.</p></div>
+      <div><b>67 réponses</b><p>Toutes avec consentement, venant de 12 communes. Les réponses de test ont été retirées.</p></div>
+      <div><b>Des limites</b><p>Échantillon non aléatoire et un seul mode « principal » par étudiant : les résultats sont des tendances.</p></div>
+    </div>
+  </section>
+
+  <footer class="foot">
+    <div><b>Campus Mobilité</b><br>Projet étudiant · BUT Management de la Logistique et des Transports · IUT de la Martinique</div>
+    <div>Enquête Campus Mobilité, <span data-source="kpis" data-field="total">—</span> réponses, octobre 2026.<br>« Usagers TC » = bus, TCSP ou taxi collectif. Pourcentages arrondis.</div>
+  </footer>
+</div>
+</div>
+<script>
+window.__ROWS__ = [{"q01_commune": "robert", "q02_mode": "tcsp", "q03_duree": "plus_60", "q04_frequence_tc": "tous_jours", "q05_attente": "10_20", "q06_retard": "tres_souvent", "q07_absence": "non", "q08_difficulte": "lignes", "q09_mesure": "navette", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "marche", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "covoiturage", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "morne_rouge", "q02_mode": "velo", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "navette", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "trinite", "q02_mode": "deux_roues_moteur", "q03_duree": "31_45", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "covoiturage", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "lamentin", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "tarifs", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "lamentin", "q02_mode": "marche", "q03_duree": "moins_15", "q04_frequence_tc": "hebdo", "q05_attente": "21_30", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "navette", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "fort_de_france", "q02_mode": "marche", "q03_duree": "moins_15", "q04_frequence_tc": "moins_hebdo", "q05_attente": "10_20", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "navette", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "robert", "q02_mode": "covoiturage_passager", "q03_duree": "46_60", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "embouteillages", "q09_mesure": "covoiturage", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "morne_rouge", "q02_mode": "bus", "q03_duree": "46_60", "q04_frequence_tc": "tous_jours", "q05_attente": "plus_30", "q06_retard": "tres_souvent", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "horaires", "q10_idees": ""}, {"q01_commune": "trinite", "q02_mode": "taxi_collectif", "q03_duree": "31_45", "q04_frequence_tc": "tous_jours", "q05_attente": "10_20", "q06_retard": "tres_souvent", "q07_absence": "oui", "q08_difficulte": "horaires", "q09_mesure": "frequence", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "ducos", "q02_mode": "taxi_collectif", "q03_duree": "46_60", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "moins_10", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "cout", "q09_mesure": "navette", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "lamentin", "q02_mode": "bus", "q03_duree": "31_45", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "moins_10", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "ponctualite", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "saint_joseph", "q02_mode": "tcsp", "q03_duree": "plus_60", "q04_frequence_tc": "tous_jours", "q05_attente": "moins_10", "q06_retard": "souvent", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "lignes", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "robert", "q02_mode": "covoiturage_passager", "q03_duree": "31_45", "q04_frequence_tc": "moins_hebdo", "q05_attente": "plus_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "aucune", "q09_mesure": "covoiturage", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "lamentin", "q02_mode": "velo", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "aucune", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "fort_de_france", "q02_mode": "taxi_collectif", "q03_duree": "31_45", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "lignes", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "lamentin", "q02_mode": "marche", "q03_duree": "moins_15", "q04_frequence_tc": "moins_hebdo", "q05_attente": "moins_10", "q06_retard": "parfois", "q07_absence": "oui", "q08_difficulte": "cout", "q09_mesure": "aucune", "q10_idees": ""}, {"q01_commune": "morne_rouge", "q02_mode": "marche", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "tarifs", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "schoelcher", "q02_mode": "taxi_collectif", "q03_duree": "46_60", "q04_frequence_tc": "tous_jours", "q05_attente": "moins_10", "q06_retard": "souvent", "q07_absence": "oui", "q08_difficulte": "lignes", "q09_mesure": "frequence", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "schoelcher", "q02_mode": "taxi_collectif", "q03_duree": "31_45", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "oui", "q08_difficulte": "cout", "q09_mesure": "lignes", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "bus", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "10_20", "q06_retard": "tres_souvent", "q07_absence": "oui", "q08_difficulte": "attente", "q09_mesure": "lignes", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "taxi_collectif", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "plus_30", "q06_retard": "tres_souvent", "q07_absence": "non", "q08_difficulte": "horaires", "q09_mesure": "frequence", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "schoelcher", "q02_mode": "voiture", "q03_duree": "46_60", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "tarifs", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "schoelcher", "q02_mode": "marche", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "aucune", "q09_mesure": "covoiturage", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "tcsp", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "horaires", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "robert", "q02_mode": "tcsp", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "plus_30", "q06_retard": "souvent", "q07_absence": "oui", "q08_difficulte": "horaires", "q09_mesure": "navette", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "fort_de_france", "q02_mode": "velo", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "parfois", "q07_absence": "oui", "q08_difficulte": "cout", "q09_mesure": "covoiturage", "q10_idees": ""}, {"q01_commune": "saint_joseph", "q02_mode": "bus", "q03_duree": "46_60", "q04_frequence_tc": "tous_jours", "q05_attente": "plus_30", "q06_retard": "souvent", "q07_absence": "non", "q08_difficulte": "horaires", "q09_mesure": "ponctualite", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "fort_de_france", "q02_mode": "bus", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "ponctualite", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "lamentin", "q02_mode": "velo", "q03_duree": "15_30", "q04_frequence_tc": "hebdo", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "aucune", "q09_mesure": "aucune", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "marche", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "aucune", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "saint_joseph", "q02_mode": "bus", "q03_duree": "31_45", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "moins_10", "q06_retard": "tres_souvent", "q07_absence": "non", "q08_difficulte": "horaires", "q09_mesure": "horaires", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "trinite", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "aucune", "q09_mesure": "tarifs", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "case_pilote", "q02_mode": "voiture", "q03_duree": "31_45", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "tarifs", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "schoelcher", "q02_mode": "bus", "q03_duree": "15_30", "q04_frequence_tc": "tous_jours", "q05_attente": "plus_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "horaires", "q10_idees": ""}, {"q01_commune": "trinite", "q02_mode": "bus", "q03_duree": "46_60", "q04_frequence_tc": "tous_jours", "q05_attente": "21_30", "q06_retard": "tres_souvent", "q07_absence": "non", "q08_difficulte": "attente", "q09_mesure": "ponctualite", "q10_idees": ""}, {"q01_commune": "saint_joseph", "q02_mode": "taxi_collectif", "q03_duree": "31_45", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "plus_30", "q06_retard": "tres_souvent", "q07_absence": "oui", "q08_difficulte": "horaires", "q09_mesure": "horaires", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "fort_de_france", "q02_mode": "deux_roues_moteur", "q03_duree": "31_45", "q04_frequence_tc": "moins_hebdo", "q05_attente": "moins_10", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "aucune", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "trinite", "q02_mode": "tcsp", "q03_duree": "31_45", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "horaires", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "lamentin", "q02_mode": "bus", "q03_duree": "31_45", "q04_frequence_tc": "tous_jours", "q05_attente": "10_20", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "navette", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "lamentin", "q02_mode": "voiture", "q03_duree": "31_45", "q04_frequence_tc": "moins_hebdo", "q05_attente": "10_20", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "aucune", "q09_mesure": "navette", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "morne_rouge", "q02_mode": "taxi_collectif", "q03_duree": "15_30", "q04_frequence_tc": "tous_jours", "q05_attente": "moins_10", "q06_retard": "tres_souvent", "q07_absence": "oui", "q08_difficulte": "lignes", "q09_mesure": "frequence", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "ducos", "q02_mode": "taxi_collectif", "q03_duree": "46_60", "q04_frequence_tc": "tous_jours", "q05_attente": "10_20", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "horaires", "q09_mesure": "ponctualite", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "lamentin", "q02_mode": "deux_roues_moteur", "q03_duree": "46_60", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "aucune", "q09_mesure": "aucune", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "moins_hebdo", "q05_attente": "21_30", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "cout", "q09_mesure": "tarifs", "q10_idees": ""}, {"q01_commune": "schoelcher", "q02_mode": "voiture", "q03_duree": "46_60", "q04_frequence_tc": "hebdo", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "navette", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "robert", "q02_mode": "velo", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "cout", "q09_mesure": "navette", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "schoelcher", "q02_mode": "tcsp", "q03_duree": "plus_60", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "plus_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "lignes", "q09_mesure": "ponctualite", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "robert", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "hebdo", "q05_attente": "plus_30", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "aucune", "q09_mesure": "navette", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "ducos", "q02_mode": "taxi_collectif", "q03_duree": "plus_60", "q04_frequence_tc": "tous_jours", "q05_attente": "21_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "navette", "q10_idees": ""}, {"q01_commune": "saint_joseph", "q02_mode": "taxi_collectif", "q03_duree": "plus_60", "q04_frequence_tc": "tous_jours", "q05_attente": "moins_10", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "horaires", "q09_mesure": "horaires", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "schoelcher", "q02_mode": "velo", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "covoiturage", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "lamentin", "q02_mode": "marche", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "parfois", "q07_absence": "oui", "q08_difficulte": "embouteillages", "q09_mesure": "tarifs", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "saint_joseph", "q02_mode": "voiture", "q03_duree": "plus_60", "q04_frequence_tc": "hebdo", "q05_attente": "21_30", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "cout", "q09_mesure": "aucune", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "bellefontaine", "q02_mode": "bus", "q03_duree": "15_30", "q04_frequence_tc": "tous_jours", "q05_attente": "10_20", "q06_retard": "souvent", "q07_absence": "non", "q08_difficulte": "attente", "q09_mesure": "navette", "q10_idees": "Proposer une navette après les derniers cours."}, {"q01_commune": "trinite", "q02_mode": "marche", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "aucune", "q10_idees": "Faciliter le covoiturage entre étudiants."}, {"q01_commune": "schoelcher", "q02_mode": "deux_roues_moteur", "q03_duree": "31_45", "q04_frequence_tc": "moins_hebdo", "q05_attente": "21_30", "q06_retard": "rarement", "q07_absence": "oui", "q08_difficulte": "aucune", "q09_mesure": "tarifs", "q10_idees": "Améliorer l’information sur les horaires."}, {"q01_commune": "morne_rouge", "q02_mode": "covoiturage_passager", "q03_duree": "15_30", "q04_frequence_tc": "moins_hebdo", "q05_attente": "plus_30", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "aucune", "q09_mesure": "aucune", "q10_idees": "Prévoir davantage de passages aux heures de cours."}, {"q01_commune": "anses_d_arlet", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "10_20", "q06_retard": "jamais", "q07_absence": "oui", "q08_difficulte": "retards", "q09_mesure": "covoiturage", "q10_idees": ""}, {"q01_commune": "schoelcher", "q02_mode": "voiture", "q03_duree": "moins_15", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "souvent", "q07_absence": "oui", "q08_difficulte": "embouteillages", "q09_mesure": "frequence", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "navette", "q10_idees": "Non"}, {"q01_commune": "schoelcher", "q02_mode": "bus", "q03_duree": "moins_15", "q04_frequence_tc": "tous_jours", "q05_attente": "moins_10", "q06_retard": "tres_souvent", "q07_absence": "oui", "q08_difficulte": "lignes", "q09_mesure": "frequence", "q10_idees": "Plus de ligne de bus"}, {"q01_commune": "fort_de_france", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "parfois", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "navette", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "voiture", "q03_duree": "15_30", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "covoiturage", "q10_idees": ""}, {"q01_commune": "fort_de_france", "q02_mode": "covoiturage_passager", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "10_20", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "retards", "q09_mesure": "navette", "q10_idees": "Il faudrait plus de bus sir les lignes vers l'université, une toutes les 10 min"}, {"q01_commune": "fort_de_france", "q02_mode": "bus", "q03_duree": "15_30", "q04_frequence_tc": "plusieurs_semaine", "q05_attente": "10_20", "q06_retard": "rarement", "q07_absence": "non", "q08_difficulte": "horaires", "q09_mesure": "navette", "q10_idees": ""}, {"q01_commune": "riviere_salee", "q02_mode": "voiture", "q03_duree": "31_45", "q04_frequence_tc": "jamais", "q05_attente": "non_concerne", "q06_retard": "jamais", "q07_absence": "non", "q08_difficulte": "embouteillages", "q09_mesure": "lignes", "q10_idees": ""}];
+(function () {
+  const calcs = {}; const fns = [];
+  window.dash = {
+    colors: ['var(--line)', 'var(--line-2)', 'var(--line-3)', 'var(--line-4)', 'var(--alert)', 'var(--ink-soft)', 'var(--muted-mark)', 'var(--line)'],
+    calc(id, o) { calcs[id] = o; },
+    loader() {},
+    data(id) {
+      if (id === 'reponses') return { status: 'ok', data: window.__ROWS__ };
+      const c = calcs[id];
+      if (c) { try { return { status: 'ok', data: c.fn(...c.inputs.map(i => window.dash.data(i).data)) }; } catch (e) { return { status: 'error', data: [] }; } }
+      return { status: 'missing', data: [] };
+    },
+    onData(fn) { fns.push(fn); fn(); }
+  };
+  let t; window.addEventListener('resize', () => { clearTimeout(t); t = setTimeout(() => fns.forEach(f => f()), 150); });
+  if (window.matchMedia) window.matchMedia('(prefers-color-scheme: dark)').addEventListener?.('change', () => fns.forEach(f => f()));
+})();
+</script>
+<script>
+
+(function () {
+  const TC = ['bus', 'tcsp', 'taxi_collectif'];
+  const L = {
+    q01_commune: { ajoupa_bouillon: "L'Ajoupa-Bouillon", anses_d_arlet: "Les Anses-d'Arlet", basse_pointe: 'Basse-Pointe', bellefontaine: 'Bellefontaine', carbet: 'Le Carbet', case_pilote: 'Case-Pilote', diamant: 'Le Diamant', ducos: 'Ducos', fonds_saint_denis: 'Fonds-Saint-Denis', fort_de_france: 'Fort-de-France', francois: 'Le François', grand_riviere: "Grand'Rivière", gros_morne: 'Gros-Morne', lamentin: 'Le Lamentin', lorrain: 'Le Lorrain', macouba: 'Macouba', marigot: 'Le Marigot', marin: 'Le Marin', morne_rouge: 'Le Morne-Rouge', morne_vert: 'Le Morne-Vert', precheur: 'Le Prêcheur', riviere_pilote: 'Rivière-Pilote', riviere_salee: 'Rivière-Salée', robert: 'Le Robert', saint_esprit: 'Saint-Esprit', saint_joseph: 'Saint-Joseph', saint_pierre: 'Saint-Pierre', sainte_anne: 'Sainte-Anne', sainte_luce: 'Sainte-Luce', sainte_marie: 'Sainte-Marie', schoelcher: 'Schœlcher', trinite: 'La Trinité', trois_ilets: 'Les Trois-Îlets', vauclin: 'Le Vauclin', hors_martinique: 'Hors Martinique', nsp: 'Préfère ne pas répondre', ne_pas_repondre: 'Préfère ne pas répondre' },
+    q02_mode: { voiture: 'Voiture (conducteur)', covoiturage_passager: 'Covoiturage / déposé', bus: 'Bus', tcsp: 'TCSP', taxi_collectif: 'Taxi collectif', deux_roues_moteur: 'Deux-roues motorisé', velo: 'Vélo', marche: 'Marche', autre: 'Autre' },
+    q03_duree: { moins_15: '< 15 min', '15_30': '15–30 min', '31_45': '31–45 min', '46_60': '46–60 min', plus_60: '> 60 min' },
+    q04_frequence_tc: { tous_jours: 'Tous les jours de cours', plusieurs_semaine: 'Plusieurs fois / semaine', hebdo: 'Environ 1 fois / semaine', moins_hebdo: "Moins d'1 fois / semaine", jamais: 'Jamais' },
+    q05_attente: { moins_10: '< 10 min', '10_20': '10–20 min', '21_30': '21–30 min', plus_30: '> 30 min', non_concerne: 'Non concerné' },
+    q06_retard: { jamais: 'Jamais', rarement: 'Rarement', parfois: 'Parfois (≈ 1×/mois)', souvent: 'Souvent (≈ 1×/sem.)', tres_souvent: 'Très souvent' },
+    q07_absence: { oui: 'Oui', non: 'Non' },
+    q08_difficulte: { embouteillages: 'Embouteillages', retards: 'Retards, annulations, irrégularité', attente: 'Attente trop longue', horaires: 'Horaires inadaptés aux cours', lignes: 'Manque de lignes / desserte', cout: 'Coût (billets, carburant…)', autre: 'Autre', aucune: 'Aucune difficulté' },
+    q09_mesure: { lignes: 'Plus de lignes / meilleure desserte', frequence: 'Passages plus fréquents', ponctualite: 'Meilleure ponctualité', horaires: 'Horaires adaptés aux cours', tarifs: 'Tarifs réduits', covoiturage: 'Service de covoiturage', navette: 'Navette universitaire', autre: 'Autre', aucune: 'Aucune amélioration nécessaire' }
+  };
+  const ORDER = {
+    q03_duree: ['moins_15', '15_30', '31_45', '46_60', 'plus_60'],
+    q04_frequence_tc: ['tous_jours', 'plusieurs_semaine', 'hebdo', 'moins_hebdo', 'jamais'],
+    q05_attente: ['moins_10', '10_20', '21_30', 'plus_30'],
+    q06_retard: ['jamais', 'rarement', 'parfois', 'souvent', 'tres_souvent']
+  };
+  const MODE_ORDER = ['bus', 'tcsp', 'taxi_collectif', 'voiture', 'covoiturage_passager', 'deux_roues_moteur', 'velo', 'marche', 'autre'];
+  const fmtPct = (n, t) => t ? Math.round(n / t * 100) + ' %' : '–';
+  const lab = (q, c) => (L[q] && L[q][c]) || String(c).replace(/_/g, ' ').replace(/^./, x => x.toUpperCase());
+
+  dash.calc('kpis', {
+    inputs: ['reponses'],
+    title: 'Chiffres clés',
+    description: 'Totaux et parts (en %, arrondis) calculés sur toutes les réponses ; TC = bus, TCSP ou taxi collectif.',
+    fn: (reponses) => {
+      const tc = ['bus', 'tcsp', 'taxi_collectif'];
+      const pct = (a, b) => b ? Math.round(a / b * 100) : 0;
+      const isTc = r => tc.includes(r.q02_mode);
+      const weekly = r => r.q06_retard === 'souvent' || r.q06_retard === 'tres_souvent';
+      const t = reponses.length;
+      const nTc = reponses.filter(isTc).length;
+      const nAbs = reponses.filter(r => r.q07_absence === 'oui').length;
+      return [{
+        total: t,
+        n_tc: nTc,
+        pct_tc: pct(nTc, t),
+        pct_long: pct(reponses.filter(r => r.q03_duree === '46_60' || r.q03_duree === 'plus_60').length, t),
+        pct_retard_tc: pct(reponses.filter(r => isTc(r) && weekly(r)).length, nTc),
+        pct_retard_autres: pct(reponses.filter(r => !isTc(r) && weekly(r)).length, t - nTc),
+        n_absence: nAbs,
+        pct_absence: pct(nAbs, t)
+      }];
+    }
+  });
+
+  let group = 'all';
+  let isolated = null;
+  let animated = false;
+  const root = document.getElementById('cm');
+
+  // tooltip
+  const tip = document.createElement('div');
+  tip.className = 'cm-tip';
+  const showTip = (host, ev, head, lines) => {
+    if (tip.parentNode !== host) host.appendChild(tip);
+    tip.textContent = '';
+    const h = document.createElement('div'); h.className = 'h'; h.textContent = head; tip.appendChild(h);
+    lines.forEach(([color, txt]) => {
+      const d = document.createElement('div');
+      if (color) { const s = document.createElement('span'); s.className = 'sw'; s.style.background = color; d.appendChild(s); }
+      d.appendChild(document.createTextNode(txt)); tip.appendChild(d);
+    });
+    const r = host.getBoundingClientRect();
+    let x = ev.clientX - r.left + 12, y = ev.clientY - r.top + 12;
+    tip.style.opacity = 1;
+    const tw = tip.offsetWidth, th = tip.offsetHeight;
+    if (x + tw > r.width) x = Math.max(0, ev.clientX - r.left - tw - 12);
+    if (y + th > r.height + 40) y = ev.clientY - r.top - th - 12;
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  };
+  const hideTip = () => { tip.style.opacity = 0; };
+  const bindTip = (el, host, head, lines) => {
+    el.addEventListener('mousemove', e => showTip(host, e, head, lines));
+    el.addEventListener('mouseleave', hideTip);
+  };
+
+  const countBy = (rows, q, keys) => {
+    const m = new Map();
+    rows.forEach(r => { const v = r[q]; if (v) m.set(v, (m.get(v) || 0) + 1); });
+    const k = keys || [...m.keys()].sort((a, b) => m.get(b) - m.get(a));
+    return k.map(c => ({ code: c, n: m.get(c) || 0 }));
+  };
+
+  // horizontal bars
+  function hbars(el, items, total, opts = {}) {
+    el.textContent = '';
+    el.classList.remove('dash-skeleton');
+    const wrap = document.createElement('div'); wrap.className = 'cm-hb';
+    const max = d3.max(items, d => d.n) || 1;
+    items.forEach((d, i) => {
+      const row = document.createElement('div'); row.className = 'cm-hb-row';
+      if (opts.dim && opts.dim(d)) row.classList.add('dim');
+      const l = document.createElement('div'); l.className = 'cm-hb-l'; l.textContent = d.label;
+      const t = document.createElement('div'); t.className = 'cm-hb-t';
+      const f = document.createElement('div'); f.className = 'cm-hb-f';
+      f.style.background = opts.color ? opts.color(d, i) : dash.colors[0];
+      f.style.width = (d.n / max * 100) + '%';
+      t.appendChild(f);
+      const v = document.createElement('div'); v.className = 'cm-hb-v';
+      const b = document.createElement('b'); b.textContent = d.n; v.appendChild(b);
+      v.appendChild(document.createTextNode('  ·  ' + fmtPct(d.n, total)));
+      row.append(l, t, v);
+      [l, t, v].forEach(x => bindTip(x, el, d.label, [[null, d.n + ' répondant' + (d.n > 1 ? 's' : '') + ' · ' + fmtPct(d.n, total) + ' du groupe']]));
+      wrap.appendChild(row);
+    });
+    el.appendChild(wrap);
+    if (!items.some(d => d.n)) { el.textContent = 'Aucune réponse dans ce groupe.'; }
+  }
+
+  // ordered columns
+  function cols(el, items, total, color) {
+    el.textContent = '';
+    el.classList.remove('dash-skeleton');
+    const wrap = document.createElement('div'); wrap.className = 'cm-cols';
+    const max = d3.max(items, d => d.n) || 1;
+    items.forEach((d, i) => {
+      const c = document.createElement('div'); c.className = 'cm-col';
+      const b = document.createElement('div'); b.className = 'cm-col-b';
+      b.style.height = Math.max(2, d.n / max * 100) + '%';
+      b.style.background = typeof color === 'function' ? color(d, i) : color;
+      const s = document.createElement('span'); s.textContent = fmtPct(d.n, total); b.appendChild(s);
+      const l = document.createElement('div'); l.className = 'cm-col-l'; l.textContent = d.label;
+      c.append(b, l);
+      bindTip(c, el, d.label, [[null, d.n + ' répondant' + (d.n > 1 ? 's' : '') + ' · ' + fmtPct(d.n, total)]]);
+      wrap.appendChild(c);
+    });
+    el.appendChild(wrap);
+  }
+
+  // ramp between two tokens
+  const tokenColor = (name) => getComputedStyle(root).getPropertyValue(name).trim();
+  function ramp(n) {
+    const a = dash.colors[0];
+    return i => `color-mix(in srgb, ${a} ${Math.round(30 + 70 * (n <= 1 ? 1 : i / (n - 1)))}%, var(--color-panel))`;
+  }
+
+  // donut
+  function donut(el, items, total) {
+    el.textContent = '';
+    el.classList.remove('dash-skeleton');
+    const box = document.createElement('div'); box.className = 'cm-donut';
+    const size = Math.min(220, Math.max(160, el.clientWidth * 0.45));
+    const svg = d3.create('svg').attr('viewBox', `0 0 ${size} ${size}`).attr('width', size).attr('height', size);
+    const g = svg.append('g').attr('transform', `translate(${size / 2},${size / 2})`);
+    const R = size / 2 - 4, r0 = R * 0.62;
+    const colorOf = (code) => dash.colors[MODE_ORDER.indexOf(code) % dash.colors.length];
+    const pie = d3.pie().sort(null).value(d => d.n).padAngle(0.012)(items.filter(d => d.n));
+    const arc = d3.arc().innerRadius(r0).outerRadius(R).cornerRadius(3);
+    const arcH = d3.arc().innerRadius(r0).outerRadius(R + 3).cornerRadius(3);
+    const center = g.append('text').attr('text-anchor', 'middle').attr('dy', '-0.2em')
+      .style('font-family', 'var(--font-anthropic-serif)').style('font-size', '2rem').style('fill', 'var(--color-fg)');
+    const sub = g.append('text').attr('text-anchor', 'middle')
+      .style('font-size', 'var(--cds-font-size-caption)').style('fill', 'var(--color-fg-muted)');
+    const setSub = (txt) => {
+      sub.selectAll('tspan').remove();
+      const words = String(txt).split(' ');
+      let l1 = '', l2 = '';
+      words.forEach(w => { if (!l2 && (l1 + ' ' + w).trim().length <= 14) l1 = (l1 + ' ' + w).trim(); else l2 = (l2 + ' ' + w).trim(); });
+      sub.append('tspan').attr('x', 0).attr('dy', '1.5em').text(l1);
+      if (l2) sub.append('tspan').attr('x', 0).attr('dy', '1.2em').text(l2);
+    };
+    const setCenter = (d) => {
+      if (d) { center.text(fmtPct(d.n, total)); setSub(lab('q02_mode', d.code)); }
+      else { const tcN = items.filter(x => TC.includes(x.code)).reduce((s, x) => s + x.n, 0); center.text(fmtPct(tcN, total)); setSub('en transports en commun'); }
+    };
+    const paths = g.selectAll('path').data(pie).join('path')
+      .attr('d', d => (isolated === d.data.code ? arcH : arc)(d))
+      .attr('fill', d => colorOf(d.data.code))
+      .attr('opacity', d => isolated && isolated !== d.data.code ? 0.25 : 1)
+      .style('cursor', 'pointer')
+      .on('mousemove', (ev, d) => { showTip(el, ev, lab('q02_mode', d.data.code), [[colorOf(d.data.code), d.data.n + ' répondants · ' + fmtPct(d.data.n, total)]]); })
+      .on('mouseleave', hideTip)
+      .on('click', (ev, d) => { isolated = isolated === d.data.code ? null : d.data.code; draw(); });
+    setCenter(isolated ? items.find(x => x.code === isolated) : null);
+    box.appendChild(svg.node());
+    const leg = document.createElement('div'); leg.className = 'cm-leg';
+    items.forEach(d => {
+      const b = document.createElement('button'); b.type = 'button';
+      if (isolated === d.code) b.classList.add('on');
+      const i = document.createElement('i'); i.style.background = colorOf(d.code);
+      const s = document.createElement('span'); s.textContent = lab('q02_mode', d.code);
+      const v = document.createElement('span'); v.textContent = d.n + ' · ' + fmtPct(d.n, total); v.style.color = 'var(--color-fg-muted)';
+      b.append(i, s, v);
+      b.setAttribute('aria-pressed', isolated === d.code ? 'true' : 'false');
+      b.addEventListener('click', () => { isolated = isolated === d.code ? null : d.code; draw(); });
+      leg.appendChild(b);
+    });
+    box.appendChild(leg);
+    el.appendChild(box);
+  }
+
+  // 100% stacked rows
+  function stacks(el, groups, q, keys, colors) {
+    el.textContent = '';
+    el.classList.remove('dash-skeleton');
+    groups.forEach(gr => {
+      const row = document.createElement('div'); row.className = 'cm-stack-row';
+      const h = document.createElement('div'); h.className = 'cm-stack-h';
+      const a = document.createElement('span'); a.textContent = gr.name;
+      const b = document.createElement('span'); b.textContent = gr.rows.length + ' répondants';
+      h.append(a, b);
+      const bar = document.createElement('div'); bar.className = 'cm-stack';
+      const counts = countBy(gr.rows, q, keys);
+      counts.forEach((c, i) => {
+        if (!c.n) return;
+        const s = document.createElement('div');
+        s.style.flexGrow = c.n; s.style.flexBasis = '0';
+        s.style.background = colors[i];
+        const p = Math.round(c.n / gr.rows.length * 100);
+        s.textContent = p >= 9 ? p + ' %' : '';
+        bindTip(s, el, gr.name + ' · ' + lab(q, c.code), [[colors[i], c.n + ' répondants · ' + p + ' %']]);
+        bar.appendChild(s);
+      });
+      row.append(h, bar);
+      el.appendChild(row);
+    });
+    const keysEl = document.createElement('div'); keysEl.className = 'cm-keys';
+    keys.forEach((k, i) => { const s = document.createElement('span'); const ic = document.createElement('i'); ic.style.background = colors[i]; s.appendChild(ic); s.appendChild(document.createTextNode(lab(q, k))); keysEl.appendChild(s); });
+    el.appendChild(keysEl);
+  }
+
+  // heatmap mode x durée
+  function heat(el, rows) {
+    el.textContent = '';
+    el.classList.remove('dash-skeleton');
+    const ks = ORDER.q03_duree;
+    const modes = MODE_ORDER.filter(m => rows.some(r => r.q02_mode === m));
+    const grid = document.createElement('div'); grid.className = 'cm-heat';
+    grid.style.gridTemplateColumns = `minmax(6.5rem, 1.6fr) repeat(${ks.length}, 1fr)`;
+    grid.appendChild(document.createElement('div'));
+    ks.forEach(k => { const d = document.createElement('div'); d.className = 'hl'; d.textContent = lab('q03_duree', k); grid.appendChild(d); });
+    const max = d3.max(modes, m => d3.max(ks, k => rows.filter(r => r.q02_mode === m && r.q03_duree === k).length)) || 1;
+    modes.forEach(m => {
+      const rl = document.createElement('div'); rl.className = 'rl'; rl.textContent = lab('q02_mode', m); grid.appendChild(rl);
+      const tot = rows.filter(r => r.q02_mode === m).length;
+      ks.forEach(k => {
+        const n = rows.filter(r => r.q02_mode === m && r.q03_duree === k).length;
+        const c = document.createElement('div'); c.className = 'c';
+        const pct = Math.round(n / max * 85);
+        c.style.background = n ? `color-mix(in srgb, ${dash.colors[0]} ${12 + pct}%, var(--color-panel))` : 'color-mix(in srgb, var(--color-fg) 4%, transparent)';
+        c.style.color = pct > 45 ? '#fff' : 'var(--color-fg)';
+        c.textContent = n || '';
+        bindTip(c, el, lab('q02_mode', m) + ' · ' + lab('q03_duree', k), [[null, n + ' répondant' + (n > 1 ? 's' : '') + (tot ? ' · ' + fmtPct(n, tot) + ' de ce mode' : '')]]);
+        grid.appendChild(c);
+      });
+    });
+    el.appendChild(grid);
+  }
+
+
+  // approximate positions (lat, lon) of Martinique's communes, for the flow schematic
+  const GEO = { ajoupa_bouillon: [14.815, -61.140], anses_d_arlet: [14.489, -61.080], basse_pointe: [14.871, -61.116], bellefontaine: [14.669, -61.161], carbet: [14.708, -61.177], case_pilote: [14.640, -61.138], diamant: [14.477, -61.028], ducos: [14.575, -60.974], fonds_saint_denis: [14.726, -61.118], fort_de_france: [14.604, -61.066], francois: [14.616, -60.903], grand_riviere: [14.872, -61.179], gros_morne: [14.713, -61.018], lamentin: [14.613, -60.999], lorrain: [14.830, -61.059], macouba: [14.873, -61.144], marigot: [14.816, -60.997], marin: [14.468, -60.869], morne_rouge: [14.777, -61.133], morne_vert: [14.704, -61.134], precheur: [14.800, -61.225], riviere_pilote: [14.484, -60.901], riviere_salee: [14.528, -60.967], robert: [14.677, -60.940], saint_esprit: [14.560, -60.930], saint_joseph: [14.671, -61.039], saint_pierre: [14.743, -61.176], sainte_anne: [14.436, -60.881], sainte_luce: [14.469, -60.924], sainte_marie: [14.783, -60.991], schoelcher: [14.614, -61.091], trinite: [14.738, -60.963], trois_ilets: [14.539, -61.041], vauclin: [14.545, -60.838] };
+  const CAMPUS = [14.622, -61.094];
+  const MG = [
+    { key: 'tc', label: 'Transports en commun', modes: ['bus', 'tcsp', 'taxi_collectif'], ci: 0 },
+    { key: 'auto', label: 'Voiture ou covoiturage', modes: ['voiture', 'covoiturage_passager'], ci: 1 },
+    { key: 'deux', label: 'Deux-roues motorisé', modes: ['deux_roues_moteur'], ci: 2 },
+    { key: 'doux', label: 'Marche ou vélo', modes: ['marche', 'velo'], ci: 3 },
+    { key: 'autre', label: 'Autre', modes: ['autre'], ci: -1 }
+  ];
+  const mgColor = g => g.ci < 0 ? 'var(--cds-chart-muted)' : dash.colors[g.ci];
+  const mgOf = m => MG.find(g => g.modes.includes(m)) || MG[4];
+
+  function flowMap(el, listEl, keysEl, rows) {
+    el.textContent = ''; listEl.textContent = ''; keysEl.textContent = '';
+    el.classList.remove('dash-skeleton'); listEl.classList.remove('dash-skeleton');
+    const T = rows.length;
+    const byC = d3.rollups(rows, v => v, r => r.q01_commune).map(([code, v]) => ({
+      code, n: v.length, rows: v,
+      groups: MG.map(g => ({ g, n: v.filter(r => g.modes.includes(r.q02_mode)).length })).filter(x => x.n)
+    })).sort((a, b) => b.n - a.n);
+    const geo = byC.filter(c => GEO[c.code]);
+    const lonMin = -61.25, lonMax = -60.81, latMin = 14.42, latMax = 14.90, k = Math.cos(14.65 * Math.PI / 180);
+    const W = Math.max(260, Math.min(el.clientWidth, 560));
+    const sx = W / ((lonMax - lonMin) * k);
+    const H = Math.round((latMax - latMin) * sx);
+    const px = ([la, lo]) => [(lo - lonMin) * k * sx, (latMax - la) * sx];
+    const maxN = d3.max(byC, c => c.n) || 1;
+    const rS = d3.scaleSqrt([0, maxN], [0, Math.max(14, W / 20)]);
+    const wS = d3.scaleLinear([0, maxN], [0, Math.max(10, W / 34)]);
+    const svg = d3.create('svg').attr('viewBox', `0 0 ${W} ${H}`).attr('width', '100%').attr('role', 'img')
+      .attr('aria-label', 'Schéma des flux domicile vers campus par commune');
+    // all communes as faint dots: they sketch the island
+    svg.append('g').selectAll('circle').data(Object.entries(GEO)).join('circle')
+      .attr('cx', d => px(d[1])[0]).attr('cy', d => px(d[1])[1]).attr('r', Math.max(2.5, W / 150))
+      .attr('fill', 'var(--cds-chart-grid)');
+    const [cx, cy] = px(CAMPUS);
+    const gLinks = svg.append('g');
+    const links = gLinks.selectAll('path').data(geo.filter(c => c.code !== 'schoelcher')).join('path')
+      .attr('d', c => {
+        const [x, y] = px(GEO[c.code]);
+        const mx = (x + cx) / 2, my = (y + cy) / 2;
+        const dx = cx - x, dy = cy - y, len = Math.hypot(dx, dy) || 1;
+        const bend = Math.min(60, len * 0.25);
+        return `M${x},${y} Q${mx - dy / len * bend},${my + dx / len * bend} ${cx},${cy}`;
+      })
+      .attr('fill', 'none').attr('stroke', 'var(--color-fg)').attr('stroke-opacity', .22)
+      .attr('stroke-width', c => Math.max(1.5, wS(c.n))).attr('stroke-linecap', 'round');
+    // campus
+    const camp = svg.append('g').attr('transform', `translate(${cx},${cy})`);
+    camp.append('circle').attr('r', Math.max(9, W / 45)).attr('fill', 'var(--color-bg)').attr('stroke', 'var(--color-fg)').attr('stroke-width', 2.5);
+    camp.append('circle').attr('r', Math.max(3.5, W / 120)).attr('fill', 'var(--color-fg)');
+    camp.append('text').attr('x', -Math.max(14, W / 30)).attr('y', -Math.max(12, W / 32)).attr('text-anchor', 'end')
+      .style('font-size', 'var(--cds-font-size-caption)').style('font-weight', 600).style('fill', 'var(--color-fg)').text('Campus de Schœlcher');
+    // commune pies
+    const pie = d3.pie().sort(null).value(d => d.n);
+    const nodes = svg.append('g').selectAll('g').data(geo).join('g')
+      .attr('transform', c => { const p = c.code === 'schoelcher' ? [cx - Math.max(12, W / 36), cy + Math.max(14, W / 30)] : px(GEO[c.code]); return `translate(${p[0]},${p[1]})`; })
+      .style('cursor', 'default');
+    nodes.each(function (c) {
+      const g = d3.select(this), R = Math.max(5, rS(c.n));
+      g.selectAll('path').data(pie(c.groups)).join('path')
+        .attr('d', d3.arc().innerRadius(0).outerRadius(R)).attr('fill', d => mgColor(d.data.g))
+        .attr('stroke', 'var(--color-panel)').attr('stroke-width', 1);
+      const left = px(GEO[c.code])[0] < cx - 4 || c.code === 'schoelcher';
+      g.append('text').attr('x', left ? -(R + 5) : R + 5).attr('dy', '0.35em').attr('text-anchor', left ? 'end' : 'start')
+        .style('font-size', 'var(--cds-font-size-caption)').style('fill', 'var(--color-fg)')
+        .style('paint-order', 'stroke').style('stroke', 'var(--color-panel)').style('stroke-width', 3)
+        .text(lab('q01_commune', c.code) + ' · ' + c.n);
+    });
+    const tipLines = c => [[null, c.n + ' étudiant' + (c.n > 1 ? 's' : '') + ' · ' + fmtPct(c.n, T) + ' des répondants']]
+      .concat(c.groups.map(x => [mgColor(x.g), x.g.label + ' : ' + x.n]));
+    const focus = code => {
+      links.attr('stroke-opacity', c => !code ? .22 : c.code === code ? .6 : .07);
+      nodes.attr('opacity', c => !code || c.code === code ? 1 : .3);
+      listEl.querySelectorAll('.cm-fl-r').forEach(r => r.classList.toggle('on', r.dataset.c === code));
+    };
+    nodes.on('mousemove', (ev, c) => { focus(c.code); showTip(el, ev, lab('q01_commune', c.code), tipLines(c)); })
+      .on('mouseleave', () => { focus(null); hideTip(); });
+    el.appendChild(svg.node());
+    // ranked list
+    const list = document.createElement('div'); list.className = 'cm-fl';
+    const h = document.createElement('div'); h.className = 'cm-fl-h'; h.textContent = 'Étudiants par commune · ' + T + ' au total'; list.appendChild(h);
+    byC.forEach((c, i) => {
+      const r = document.createElement('div'); r.className = 'cm-fl-r'; r.dataset.c = c.code;
+      const ix = document.createElement('span'); ix.className = 'cm-fl-i'; ix.textContent = i + 1;
+      const nm = document.createElement('span'); nm.textContent = lab('q01_commune', c.code);
+      const nn = document.createElement('span'); nn.className = 'cm-fl-n'; nn.textContent = c.n;
+      const bar = document.createElement('div'); bar.className = 'cm-fl-b';
+      bar.style.width = (c.n / maxN * 100) + '%';
+      c.groups.forEach(x => { const sg = document.createElement('div'); sg.style.flex = x.n + ' 0 0'; sg.style.background = mgColor(x.g); bar.appendChild(sg); });
+      r.append(ix, nm, nn, bar);
+      r.addEventListener('mousemove', ev => { focus(c.code); showTip(listEl, ev, lab('q01_commune', c.code), tipLines(c)); });
+      r.addEventListener('mouseleave', () => { focus(null); hideTip(); });
+      list.appendChild(r);
+    });
+    listEl.style.position = 'relative';
+    listEl.appendChild(list);
+    MG.filter(g => rows.some(r => g.modes.includes(r.q02_mode))).forEach(g => {
+      const sp = document.createElement('span'); const ic = document.createElement('i'); ic.style.background = mgColor(g);
+      sp.appendChild(ic); sp.appendChild(document.createTextNode(g.label)); keysEl.appendChild(sp);
+    });
+  }
+  function fail(el) { el.classList.remove('dash-skeleton'); el.textContent = ''; const d = document.createElement('div'); d.className = 'cm-fail'; d.textContent = 'Failed to load'; el.appendChild(d); }
+
+  const ids = ['ch-flux', 'ch-flux-list', 'ch-commune', 'ch-mode', 'ch-duree', 'ch-freq', 'ch-attente', 'ch-heat', 'ch-retard', 'ch-absence', 'ch-att-ret', 'ch-diff', 'ch-mesure', 'ch-idees'];
+  const $ = id => document.getElementById(id);
+
+  document.querySelectorAll('#cm-seg button').forEach(b => b.addEventListener('click', () => {
+    group = b.dataset.g;
+    document.querySelectorAll('#cm-seg button').forEach(x => x.setAttribute('aria-pressed', x === b ? 'true' : 'false'));
+    draw();
+  }));
+
+  function draw() {
+    const res = dash.data('reponses');
+    const k = dash.data('kpis');
+    const lead = $('cm-lead');
+    if (res.status !== 'ok' || !Array.isArray(res.data)) {
+      ids.forEach(id => { const el = $(id); if (res.status === 'error' || res.status === 'connect' || res.status === 'declined') fail(el); else { el.textContent = ''; el.classList.add('dash-skeleton'); } });
+      return;
+    }
+    const kr = k.status === 'ok' && Array.isArray(k.data) ? k.data[0] : null;
+    document.querySelectorAll('#cm [data-source="kpis"][data-field]').forEach(m => {
+      m.classList.remove('dash-skeleton');
+      m.textContent = kr && kr[m.dataset.field] != null ? String(kr[m.dataset.field]) : '—';
+    });
+    const all = res.data;
+    const isTc = r => TC.includes(r.q02_mode);
+    const weekly = r => r.q06_retard === 'souvent' || r.q06_retard === 'tres_souvent';
+    const rows = group === 'tc' ? all.filter(isTc) : group === 'autres' ? all.filter(r => !isTc(r)) : all;
+    const sel = isolated ? rows.filter(r => r.q02_mode === isolated) : rows;
+    const T = sel.length;
+
+    lead.textContent = '';
+    if (all.length) {
+      const topMode = countBy(all, 'q02_mode')[0];
+      const topDiff = countBy(all.filter(r => r.q08_difficulte !== 'aucune'), 'q08_difficulte')[0];
+      const nAbs = all.filter(r => r.q07_absence === 'oui').length;
+      const tcR = all.filter(isTc), auR = all.filter(r => !isTc(r));
+      lead.appendChild(document.createTextNode('Sur ' + all.length + ' réponses' + ', le mode le plus utilisé est '));
+      const m = document.createElement('span'); m.className = 'cm-strong'; m.textContent = lab('q02_mode', topMode.code).toLowerCase() + ' (' + fmtPct(topMode.n, all.length) + ')'; lead.appendChild(m);
+      if (topDiff) { lead.appendChild(document.createTextNode(', la difficulté la plus citée est ')); const d = document.createElement('span'); d.className = 'cm-strong'; d.textContent = lab('q08_difficulte', topDiff.code).toLowerCase(); lead.appendChild(d); }
+      lead.appendChild(document.createTextNode(' et ' + fmtPct(nAbs, all.length) + ' ont déjà manqué un cours à cause du transport.'));
+      if (tcR.length >= 5 && auR.length >= 5) lead.appendChild(document.createTextNode(' Retard chaque semaine : ' + fmtPct(tcR.filter(weekly).length, tcR.length) + ' des usagers TC, ' + fmtPct(auR.filter(weekly).length, auR.length) + ' des autres.'));
+    } else lead.textContent = 'Aucune réponse pour l’instant.';
+
+    const gName = group === 'tc' ? 'usagers TC' : group === 'autres' ? 'autres modes' : 'tous les répondants';
+    $('cm-bar-n').textContent = T + ' réponses · ' + gName + (isolated ? ' · ' + lab('q02_mode', isolated) : '');
+
+    flowMap($('ch-flux'), $('ch-flux-list'), $('ch-flux-keys'), sel);
+    // communes
+    hbars($('ch-commune'), countBy(sel, 'q01_commune').map(d => ({ ...d, label: lab('q01_commune', d.code) })), T,
+      { color: (d, i) => i === 0 ? dash.colors[0] : `color-mix(in srgb, ${dash.colors[0]} 55%, var(--color-panel))` });
+    // mode donut (ignores isolation for its own counts)
+    donut($('ch-mode'), countBy(rows, 'q02_mode', MODE_ORDER).filter(d => d.n), rows.length);
+    // durée
+    const dur = countBy(sel, 'q03_duree', ORDER.q03_duree).map(d => ({ ...d, label: lab('q03_duree', d.code) }));
+    cols($('ch-duree'), dur, T, (d, i) => i >= 3 ? 'var(--cds-chart-status-critical)' : ramp(5)(i));
+    // fréquence TC
+    hbars($('ch-freq'), countBy(sel, 'q04_frequence_tc', ORDER.q04_frequence_tc).map(d => ({ ...d, label: lab('q04_frequence_tc', d.code) })), T,
+      { color: (d, i) => d.code === 'jamais' ? 'var(--cds-chart-muted)' : ramp(4)(3 - Math.min(i, 3)) });
+    // attente (TC users only)
+    const att = sel.filter(r => r.q05_attente && r.q05_attente !== 'non_concerne');
+    const attEl = $('ch-attente');
+    if (att.length) cols(attEl, countBy(att, 'q05_attente', ORDER.q05_attente).map(d => ({ ...d, label: lab('q05_attente', d.code) })), att.length,
+      (d, i) => i >= 3 ? 'var(--cds-chart-status-critical)' : ramp(4)(i));
+    else { attEl.classList.remove('dash-skeleton'); attEl.textContent = 'Aucun répondant concerné dans ce groupe.'; attEl.style.color = 'var(--color-fg-muted)'; }
+    // heatmap
+    heat($('ch-heat'), rows);
+
+    // retards: always compare groups
+    const rColors = [
+      `color-mix(in srgb, ${dash.colors[1]} 85%, var(--color-panel))`,
+      `color-mix(in srgb, ${dash.colors[1]} 55%, var(--color-panel))`,
+      'var(--cds-chart-muted)',
+      `color-mix(in srgb, var(--cds-chart-status-critical) 70%, var(--color-panel))`,
+      'var(--cds-chart-status-critical)'
+    ];
+    const tcRows = all.filter(isTc), auRows = all.filter(r => !isTc(r));
+    stacks($('ch-retard'), [
+      { name: 'Usagers des transports en commun', rows: tcRows },
+      { name: 'Autres modes (voiture, covoiturage, marche…)', rows: auRows },
+      { name: 'Ensemble', rows: all }
+    ], 'q06_retard', ORDER.q06_retard, rColors);
+    const call = $('cm-call-retard');
+    call.textContent = '';
+    const wt = tcRows.filter(weekly).length, wa = auRows.filter(weekly).length;
+    const cs = document.createElement('span'); cs.className = 'cm-strong'; cs.textContent = wt + ' usager' + (wt > 1 ? 's' : '') + ' TC sur ' + tcRows.length;
+    call.appendChild(cs);
+    call.appendChild(document.createTextNode(' en retard au moins une fois par semaine (' + fmtPct(wt, tcRows.length) + '), contre ' + wa + ' sur ' + auRows.length + ' pour les autres modes (' + fmtPct(wa, auRows.length) + ').'));
+    if (tcRows.length < 5 || auRows.length < 5) call.appendChild(document.createTextNode(' Groupes encore trop petits pour conclure : à suivre avec plus de réponses.'));
+    else if (wt / tcRows.length > 2 * (wa / auRows.length || 0) && wt / tcRows.length >= 0.2) call.appendChild(document.createTextNode(' Le retard fréquent touche surtout les usagers des transports en commun.'));
+
+    // absence by group
+    const absItems = [
+      { name: 'Usagers TC', rows: tcRows }, { name: 'Autres modes', rows: auRows }, { name: 'Ensemble', rows: all }
+    ].map(g => ({ label: g.name, n: g.rows.filter(r => r.q07_absence === 'oui').length, t: g.rows.length }));
+    const absEl = $('ch-absence'); absEl.textContent = ''; absEl.classList.remove('dash-skeleton');
+    const absWrap = document.createElement('div'); absWrap.className = 'cm-hb';
+    absItems.forEach((d, i) => {
+      const row = document.createElement('div'); row.className = 'cm-hb-row';
+      const l = document.createElement('div'); l.className = 'cm-hb-l'; l.textContent = d.label;
+      const t = document.createElement('div'); t.className = 'cm-hb-t'; t.style.height = '26px';
+      const f = document.createElement('div'); f.className = 'cm-hb-f';
+      f.style.width = (d.t ? d.n / d.t * 100 : 0) + '%';
+      f.style.background = i === 0 ? 'var(--cds-chart-status-critical)' : i === 1 ? 'var(--cds-chart-muted)' : dash.colors[0];
+      t.appendChild(f);
+      const v = document.createElement('div'); v.className = 'cm-hb-v';
+      const b = document.createElement('b'); b.textContent = fmtPct(d.n, d.t); v.appendChild(b);
+      v.appendChild(document.createTextNode('  ' + d.n + '/' + d.t));
+      row.append(l, t, v);
+      [l, t, v].forEach(x => bindTip(x, absEl, d.label, [[null, d.n + ' sur ' + d.t + ' ont déjà manqué un cours, un examen ou une activité']]));
+      absWrap.appendChild(row);
+    });
+    absEl.appendChild(absWrap);
+
+    // attente x retard hebdo
+    const arItems = ORDER.q05_attente.map(code => {
+      const g = all.filter(r => r.q05_attente === code);
+      return { label: lab('q05_attente', code), n: g.filter(weekly).length, t: g.length };
+    });
+    const arEl = $('ch-att-ret'); arEl.textContent = ''; arEl.classList.remove('dash-skeleton');
+    const arWrap = document.createElement('div'); arWrap.className = 'cm-hb';
+    arItems.forEach((d, i) => {
+      const row = document.createElement('div'); row.className = 'cm-hb-row';
+      const l = document.createElement('div'); l.className = 'cm-hb-l'; l.textContent = 'Attente ' + d.label;
+      const t = document.createElement('div'); t.className = 'cm-hb-t'; t.style.height = '22px';
+      const f = document.createElement('div'); f.className = 'cm-hb-f';
+      f.style.width = (d.t ? d.n / d.t * 100 : 0) + '%';
+      f.style.background = `color-mix(in srgb, var(--cds-chart-status-critical) ${40 + i * 20}%, var(--color-panel))`;
+      t.appendChild(f);
+      const v = document.createElement('div'); v.className = 'cm-hb-v';
+      const b = document.createElement('b'); b.textContent = fmtPct(d.n, d.t); v.appendChild(b);
+      v.appendChild(document.createTextNode('  ' + d.n + '/' + d.t));
+      row.append(l, t, v);
+      [l, t, v].forEach(x => bindTip(x, arEl, 'Attente ' + d.label, [[null, d.n + ' sur ' + d.t + ' en retard au moins 1×/semaine']]));
+      arWrap.appendChild(row);
+    });
+    arEl.appendChild(arWrap);
+
+    // difficultés / mesures
+    const tcDiff = ['retards', 'attente', 'horaires', 'lignes'];
+    hbars($('ch-diff'), countBy(sel, 'q08_difficulte').map(d => ({ ...d, label: lab('q08_difficulte', d.code) })), T,
+      { color: d => d.code === 'aucune' ? 'var(--cds-chart-muted)' : tcDiff.includes(d.code) ? dash.colors[1] : dash.colors[2] });
+    hbars($('ch-mesure'), countBy(sel, 'q09_mesure').map(d => ({ ...d, label: lab('q09_mesure', d.code) })), T,
+      { color: d => d.code === 'aucune' ? 'var(--cds-chart-muted)' : dash.colors[3] });
+
+    // idées
+    const idEl = $('ch-idees'); idEl.textContent = ''; idEl.classList.remove('dash-skeleton');
+    const withIdea = sel.filter(r => r.q10_idees && String(r.q10_idees).trim() && !/^(non|rien|aucune?|ras|-)\.?$/i.test(String(r.q10_idees).trim()));
+    const ideas = countBy(withIdea, 'q10_idees');
+    if (ideas.length && ideas.every(d => d.n === 1)) {
+      ideas.forEach((d, i) => {
+        const c = document.createElement('div'); c.className = 'cm-idea';
+        c.style.borderLeft = '3px solid ' + dash.colors[i % dash.colors.length];
+        const q = document.createElement('div'); q.className = 'cm-quote'; q.textContent = '« ' + String(d.code).trim() + ' »';
+        const r = sel.find(x => x.q10_idees === d.code);
+        const m = document.createElement('div'); m.className = 'cm-quote-m';
+        m.textContent = r ? lab('q02_mode', r.q02_mode) + ' · ' + lab('q03_duree', r.q03_duree) : '';
+        c.append(q, m);
+        idEl.appendChild(c);
+      });
+    } else ideas.forEach((d, i) => {
+      const c = document.createElement('div'); c.className = 'cm-idea';
+      const n = document.createElement('div'); n.className = 'cm-idea-n'; n.textContent = d.n;
+      const t = document.createElement('div'); t.className = 'cm-idea-t'; t.textContent = '« ' + d.code.replace(/\.$/, '') + ' »';
+      const p = document.createElement('div'); p.className = 'cm-idea-p';
+      const pf = document.createElement('div'); pf.style.width = fmtPct(d.n, withIdea.length).replace(' ', ''); pf.style.background = dash.colors[i % dash.colors.length];
+      p.appendChild(pf);
+      c.append(n, t, p);
+      bindTip(c, idEl, 'Idée libre', [[dash.colors[i % dash.colors.length], d.n + ' mentions · ' + fmtPct(d.n, withIdea.length) + ' des remarques']]);
+      idEl.appendChild(c);
+    });
+    const none = document.createElement('div'); none.className = 'cm-idea';
+    const nn = document.createElement('div'); nn.className = 'cm-idea-n'; nn.style.color = 'var(--color-fg-muted)'; nn.textContent = T - withIdea.length;
+    const nt = document.createElement('div'); nt.className = 'cm-idea-t'; nt.style.color = 'var(--color-fg-muted)'; nt.textContent = 'Sans remarque (question facultative)';
+    none.append(nn, nt); idEl.appendChild(none);
+
+    if (!animated) { root.classList.add('cm-in'); animated = true; }
+  }
+
+  ids.forEach(id => document.getElementById(id).classList.add('dash-skeleton'));
+  dash.onData(draw);
+})();
+
+</script>
+</body>
+</html>
